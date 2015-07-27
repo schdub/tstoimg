@@ -17,37 +17,24 @@
 
 #pragma once
 
-#include <QByteArray>
-
-class QString;
-class QImage;
-class QIODevice;
+#include <QVector>
+#include <QString>
+#include <QImage>
 
 namespace op {
 
-class RGBFile {
+class BcellFile {
 public:
-    RGBFile(const QString &filePath);
-    RGBFile(const QString &name, QIODevice *, bool flip = false);
-    ~RGBFile();
-
-    QImage *releaseImage();
-    void setImage(const QImage &);
-    QImage * image() { return mPixmap; }
-    int width()  const { return  mWidth; }
-    int height() const { return mHeight; }
-
-    static bool convertTo(const QString & srcFile, const QString & dstFile);
+    BcellFile(const QString & filePath);
+    virtual ~BcellFile();
+    const QVector<QImage> & frames() const { return mFrames; }
+    int maximumHeight() const { return maxH; }
+    int maximumWidth()  const { return maxW; }
 
 private:
-    int mWidth;
-    int mHeight;
-    QImage * mPixmap;
-    QByteArray mImageData;
-
-    RGBFile(const RGBFile &);
-    RGBFile& operator=(const RGBFile &);
-    bool loadFromIODevice(const QString & name, QIODevice *);
+    QVector<QImage> mFrames;
+    int maxH;
+    int maxW;
 };
 
-} // namespace op
+} // namespace

@@ -1,6 +1,7 @@
 // ///////////////////////////////////////////////////////////////////////// //
 //                                                                           //
-//   Copyright (C) 2014 by jsbot@ya.ru                                       //
+//   Copyright (C) 2014, 2015 by Oleg Polivets                               //
+//   jsbot@ya.ru                                                             //
 //                                                                           //
 //   This program is free software; you can redistribute it and/or modify    //
 //   it under the terms of the GNU General Public License as published by    //
@@ -24,6 +25,8 @@
 #include <QRgb>
 
 #define RGB_FILE_SIGNATURE (0x20000000)
+
+namespace op {
 
 RGBFile::RGBFile(const QString &filePath)
 : mWidth(0), mHeight(0), mPixmap(0) {
@@ -169,3 +172,11 @@ bool RGBFile::convertTo(const QString & srcFile, const QString & dstFile) {
 
     return true;
 }
+
+QImage* RGBFile::releaseImage() {
+    QImage* img = NULL;
+    std::swap(img, mPixmap);
+    return img;
+}
+
+} // namespace op
