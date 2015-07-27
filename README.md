@@ -1,4 +1,4 @@
-rgb2png
+tstoimg
 =======
 
-Simpsons TappedOut .rgb file to .png converter
+Simpsons Tapped Out images file converter

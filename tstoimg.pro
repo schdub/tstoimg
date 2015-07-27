@@ -3,11 +3,7 @@
 ######################################################################
 
 TEMPLATE = app
-TARGET   = rgb2png
-CONFIG      += console
-# abitily debbuging with gdb version less 7.5
-QMAKE_CXXFLAGS_DEBUG += -gdwarf-3
-DEPENDPATH  += .
-INCLUDEPATH += .
+TARGET   = tstoimg
+CONFIG  += console
 HEADERS += rgbfile.h
-SOURCES += rgb2png.cpp rgbfile.cpp
+SOURCES += tstoimg.cpp rgbfile.cpp
