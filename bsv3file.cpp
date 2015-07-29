@@ -172,6 +172,7 @@ QImage createSubImage(const QImage & image, const QRect & rect) {
 }
 
 QVector< QImage > Bsv3File::getFrames(const QString & framesName) const {
+    Q_ASSERT(!mPict.isNull());
     QVector< QImage > frames;
     if (mAnimations.contains(framesName)) {
         const int ib = mAnimations[framesName].first;
@@ -202,12 +203,13 @@ QVector< QImage > Bsv3File::getFrames(const QString & framesName) const {
 
         baseX  = minX * -1;
         w = abs(maxX) + abs(minX);
-        h = abs(minY);
+        h = abs(maxY) + abs(minY);
 
         // make frames
         for (int index = ib; index <= ie; ++index) {
             // build single frame with transfomations data
             QImage img(w, h, mPict.format());
+            Q_ASSERT(!img.isNull());
             img.fill(Qt::transparent);
             QPainter painter(&img);
             for (int i = mTransformations[index].size()-1; i >= 0; --i) {

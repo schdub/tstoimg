@@ -39,6 +39,7 @@ bool dumpFramesIntoVideo(const QString & outFilePath, const QVector<QImage> & fr
     int fps = 25;
 
     foreach (const QImage & img, frames) {
+        Q_ASSERT(!img.isNull());
         if (img.width() > width) width = img.width();
         if (img.height() > height) height = img.height();
     }
@@ -46,23 +47,20 @@ bool dumpFramesIntoVideo(const QString & outFilePath, const QVector<QImage> & fr
     while (width % 8 != 0) ++width;
     while (height % 8 != 0) ++height;
 
-    // The image on which we draw the frames
-    QImage frame(width,height,QImage::Format_RGB32);     // Only RGB32 is supported
-
-    // A painter to help us draw
+    QImage frame(width,height,QImage::Format_RGB32);
     QPainter painter(&frame);
-
-    // Create the encoder
     QVideoEncoder encoder;
-    encoder.createFile(outFilePath,width,height,bitrate,gop,fps);        // Fixed frame rate
+    encoder.createFile(outFilePath,width,height,bitrate,gop,fps);
 
     Q_ASSERT(encoder.isOk());
+    if (!encoder.isOk()) {
+        return false;
+    }
 
     foreach (const QImage & img, frames) {
-        frame.fill(Qt::transparent);
+        frame.fill(QColor(102, 187, 102));
         painter.drawImage(0, 0, img);
-        int size=encoder.encodeImage(frame);                      // Fixed frame rate
-        printf("Encoded: %d\n",size);
+        encoder.encodeImage(frame);
     }
 
     encoder.close();
@@ -97,7 +95,10 @@ bool bsv3ToPng(const char * fp) {
     filePath.remove(filePath.length() - 5, filePath.length());
     op::RGBFile rgb(filePath + ".rgb");
     QImage * img = rgb.image();
-    if (!img) return false;
+    if (!img) {
+        qWarning() << "ERR: can't load RGB '" << fp << "'.";
+        return false;
+    }
     filePath = QString(fp);
     QFile ffp(filePath);
     op::Bsv3File file(ffp, *img);
@@ -111,7 +112,10 @@ bool bsv3ToAvi(const char * fp) {
     filePath.remove(filePath.length() - 5, filePath.length());
     op::RGBFile rgb(filePath + ".rgb");
     QImage * img = rgb.image();
-    if (!img) return false;
+    if (!img) {
+        qWarning() << "ERR: can't load RGB '" << fp << "'.";
+        return false;
+    }
     filePath = QString(fp);
     QFile ffp(filePath);
     op::Bsv3File bsvFile(ffp, *img);
