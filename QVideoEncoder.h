@@ -32,21 +32,21 @@ class QVideoEncoder
       bool ok;
 
       // FFmpeg stuff
-      ffmpeg::AVFormatContext *pFormatCtx;
-      ffmpeg::AVOutputFormat *pOutputFormat;
-      ffmpeg::AVCodecContext *pCodecCtx;
-      ffmpeg::AVStream *pVideoStream;
-      ffmpeg::AVCodec *pCodec;
+      AVFormatContext *pFormatCtx;
+      AVOutputFormat *pOutputFormat;
+      AVCodecContext *pCodecCtx;
+      AVStream *pVideoStream;
+      AVCodec *pCodec;
       // Frame data
-      ffmpeg::AVFrame *ppicture;
+      AVFrame *ppicture;
       uint8_t *picture_buf;
       // Compressed data
       int outbuf_size;
       uint8_t* outbuf;
       // Conversion
-      ffmpeg::SwsContext *img_convert_ctx;
+      SwsContext *img_convert_ctx;
       // Packet
-      ffmpeg::AVPacket pkt;
+      AVPacket pkt;
 
       QString fileName;
 

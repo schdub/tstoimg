@@ -17,14 +17,11 @@ THIS SOFTWARE IS PROVIDED BY COPYRIGHT HOLDERS ``AS IS'' AND ANY EXPRESS OR IMPL
 #include "QVideoEncoder.h"
 #include "ffmpeg.h"
 
-
-
 /******************************************************************************
 *******************************************************************************
 * QVideoEncoder   QVideoEncoder   QVideoEncoder   QVideoEncoder   QVideoEncoder
 *******************************************************************************
 ******************************************************************************/
-
 
 /******************************************************************************
 * PUBLIC   PUBLIC   PUBLIC   PUBLIC   PUBLIC   PUBLIC   PUBLIC   PUBLIC   PUBLIC
@@ -71,13 +68,13 @@ bool QVideoEncoder::createFile(QString fileName,unsigned width,unsigned height,u
       return false;
    }
 
-   pOutputFormat = ffmpeg::av_guess_format(NULL, fileName.toStdString().c_str(), NULL);
+   pOutputFormat = av_guess_format(NULL, fileName.toStdString().c_str(), NULL);
    if (!pOutputFormat) {
       printf("Could not deduce output format from file extension: using MPEG.\n");
-      pOutputFormat = ffmpeg::av_guess_format("mpeg", NULL, NULL);
+      pOutputFormat = av_guess_format("mpeg", NULL, NULL);
    }
 
-   pFormatCtx=ffmpeg::avformat_alloc_context();
+   pFormatCtx=avformat_alloc_context();
    if(!pFormatCtx)
    {
       printf("Error allocating format context\n");
@@ -89,7 +86,8 @@ bool QVideoEncoder::createFile(QString fileName,unsigned width,unsigned height,u
 
    // Add the video stream
 
-   pVideoStream = av_new_stream(pFormatCtx,0);
+   pVideoStream = avformat_new_stream(pFormatCtx, NULL);
+   pVideoStream->id = 0;
    if(!pVideoStream )
    {
       printf("Could not allocate stream\n");
@@ -99,7 +97,7 @@ bool QVideoEncoder::createFile(QString fileName,unsigned width,unsigned height,u
 
    pCodecCtx=pVideoStream->codec;
    pCodecCtx->codec_id = pOutputFormat->video_codec;
-   pCodecCtx->codec_type = ffmpeg::AVMEDIA_TYPE_VIDEO;
+   pCodecCtx->codec_type = AVMEDIA_TYPE_VIDEO;
 
    pCodecCtx->bit_rate = Bitrate;
    pCodecCtx->width = getWidth();
@@ -107,10 +105,10 @@ bool QVideoEncoder::createFile(QString fileName,unsigned width,unsigned height,u
    pCodecCtx->time_base.den = fps;
    pCodecCtx->time_base.num = 1;
    pCodecCtx->gop_size = Gop;
-   pCodecCtx->pix_fmt = ffmpeg::PIX_FMT_YUV420P;
+   pCodecCtx->pix_fmt = PIX_FMT_YUV420P;
 
 
-   avcodec_thread_init(pCodecCtx, 10);
+   //avcodec_thread_init(pCodecCtx, 10);
 
    //if (c->codec_id == CODEC_ID_MPEG2VIDEO)
    //{
@@ -122,13 +120,13 @@ bool QVideoEncoder::createFile(QString fileName,unsigned width,unsigned height,u
       pCodecCtx->flags |= CODEC_FLAG_GLOBAL_HEADER;
 
 
-   if (av_set_parameters(pFormatCtx, NULL) < 0)
-   {
-      printf("Invalid output format parameters\n");
-      return false;
-   }
+//   if (av_set_parameters(pFormatCtx, NULL) < 0)
+//   {
+//      printf("Invalid output format parameters\n");
+//      return false;
+//   }
 
-   ffmpeg::dump_format(pFormatCtx, 0, fileName.toStdString().c_str(), 1);
+   //dump_format(pFormatCtx, 0, fileName.toStdString().c_str(), 1);
 
    // open_video
    // find the video encoder
@@ -139,7 +137,7 @@ bool QVideoEncoder::createFile(QString fileName,unsigned width,unsigned height,u
       return false;
    }
    // open the codec
-   if (avcodec_open(pCodecCtx, pCodec) < 0)
+   if (avcodec_open2(pCodecCtx, pCodec, NULL) < 0)
    {
       printf("could not open codec\n");
       return false;
@@ -159,15 +157,13 @@ bool QVideoEncoder::createFile(QString fileName,unsigned width,unsigned height,u
       return false;
    }
 
-   if (url_fopen(&pFormatCtx->pb, fileName.toStdString().c_str(), URL_WRONLY) < 0)
+   if (avio_open(&pFormatCtx->pb, fileName.toStdString().c_str(), URL_WRONLY) < 0)
    {
       printf( "Could not open '%s'\n", fileName.toStdString().c_str());
       return false;
    }
 
-   av_write_header(pFormatCtx);
-
-
+   avformat_write_header(pFormatCtx, NULL);
 
    ok=true;
 
@@ -193,14 +189,14 @@ bool QVideoEncoder::close()
 
    /* free the streams */
 
-   for(int i = 0; i < pFormatCtx->nb_streams; i++)
+   for(unsigned i = 0; i < pFormatCtx->nb_streams; i++)
    {
       av_freep(&pFormatCtx->streams[i]->codec);
       av_freep(&pFormatCtx->streams[i]);
    }
 
    // Close file
-   url_fclose(pFormatCtx->pb);
+   avio_close(pFormatCtx->pb);
 
    // Free the stream
    av_free(pFormatCtx);
@@ -240,7 +236,6 @@ int QVideoEncoder::encodeImagePts(const QImage &img,unsigned pts)
    return encodeImage_p(img,true,pts);
 }
 
-
 /******************************************************************************
 * INTERNAL   INTERNAL   INTERNAL   INTERNAL   INTERNAL   INTERNAL   INTERNAL
 ******************************************************************************/
@@ -265,12 +260,12 @@ void QVideoEncoder::initVars()
 **/
 bool QVideoEncoder::initCodec()
 {
-   ffmpeg::avcodec_init();
-   ffmpeg::av_register_all();
+    avcodec_register_all();
+    av_register_all();
 
-   printf("License: %s\n",ffmpeg::avformat_license());
-   printf("AVCodec version %d\n",ffmpeg::avformat_version());
-   printf("AVFormat configuration: %s\n",ffmpeg::avformat_configuration());
+//   printf("License: %s\n",avformat_license());
+//   printf("AVCodec version %d\n",avformat_version());
+//   printf("AVFormat configuration: %s\n",avformat_configuration());
 
    return true;
 }
@@ -288,12 +283,10 @@ int QVideoEncoder::encodeImage_p(const QImage &img,bool custompts, unsigned pts)
    //convertImage(img);       // Custom conversion routine
    convertImage_sws(img);     // SWS conversion
 
-
-
    if(custompts)                             // Handle custom pts
          pCodecCtx->coded_frame->pts = pts;  // Set the time stamp
 
-   int out_size = ffmpeg::avcodec_encode_video(pCodecCtx,outbuf,outbuf_size,ppicture);
+   int out_size = avcodec_encode_video(pCodecCtx,outbuf,outbuf_size,ppicture);
    //printf("Frame size: %d\n",out_size);
 
 
@@ -305,8 +298,7 @@ int QVideoEncoder::encodeImage_p(const QImage &img,bool custompts, unsigned pts)
 
       av_init_packet(&pkt);
 
-      //if (pCodecCtx->coded_frame->pts != AV_NOPTS_VALUE)
-      if (pCodecCtx->coded_frame->pts != (0x8000000000000000LL))
+      if (pCodecCtx->coded_frame->pts != (int64_t)AV_NOPTS_VALUE)
          pkt.pts= av_rescale_q(pCodecCtx->coded_frame->pts, pCodecCtx->time_base, pVideoStream->time_base);
       if(pCodecCtx->coded_frame->key_frame)
          pkt.flags |= AV_PKT_FLAG_KEY;
@@ -323,8 +315,6 @@ int QVideoEncoder::encodeImage_p(const QImage &img,bool custompts, unsigned pts)
    }
    return out_size;
 }
-
-
 
 /**
   Ensures sizes are some reasonable multiples
@@ -381,7 +371,7 @@ void QVideoEncoder::freeOutputBuf()
 
 bool QVideoEncoder::initFrame()
 {
-   ppicture = ffmpeg::avcodec_alloc_frame();
+   ppicture = avcodec_alloc_frame();
    if(ppicture==0)
       return false;
 
@@ -395,7 +385,7 @@ bool QVideoEncoder::initFrame()
    }
 
    // Setup the planes
-   avpicture_fill((ffmpeg::AVPicture *)ppicture, picture_buf,pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
+   avpicture_fill((AVPicture *)ppicture, picture_buf,pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
 
    return true;
 }
@@ -423,7 +413,7 @@ void QVideoEncoder::freeFrame()
 bool QVideoEncoder::convertImage(const QImage &img)
 {
    // Check if the image matches the size
-   if(img.width()!=getWidth() || img.height()!=getHeight())
+   if(img.width()!=(int)getWidth() || img.height()!=(int)getHeight())
    {
       printf("Wrong image size!\n");
       return false;
@@ -517,7 +507,7 @@ bool QVideoEncoder::convertImage(const QImage &img)
 bool QVideoEncoder::convertImage_sws(const QImage &img)
 {
    // Check if the image matches the size
-   if(img.width()!=getWidth() || img.height()!=getHeight())
+   if(img.width()!=(int)getWidth() || img.height()!=(int)getHeight())
    {
       printf("Wrong image size!\n");
       return false;
@@ -528,8 +518,8 @@ bool QVideoEncoder::convertImage_sws(const QImage &img)
       return false;
    }
 
-   img_convert_ctx = ffmpeg::sws_getCachedContext(img_convert_ctx,getWidth(),getHeight(),ffmpeg::PIX_FMT_BGRA,getWidth(),getHeight(),ffmpeg::PIX_FMT_YUV420P,SWS_BICUBIC, NULL, NULL, NULL);
-   //img_convert_ctx = ffmpeg::sws_getCachedContext(img_convert_ctx,getWidth(),getHeight(),ffmpeg::PIX_FMT_BGRA,getWidth(),getHeight(),ffmpeg::PIX_FMT_YUV420P,SWS_FAST_BILINEAR, NULL, NULL, NULL);
+   img_convert_ctx = sws_getCachedContext(img_convert_ctx,getWidth(),getHeight(),PIX_FMT_BGRA,getWidth(),getHeight(),PIX_FMT_YUV420P,SWS_BICUBIC, NULL, NULL, NULL);
+   //img_convert_ctx = sws_getCachedContext(img_convert_ctx,getWidth(),getHeight(),PIX_FMT_BGRA,getWidth(),getHeight(),PIX_FMT_YUV420P,SWS_FAST_BILINEAR, NULL, NULL, NULL);
    if (img_convert_ctx == NULL)
    {
       printf("Cannot initialize the conversion context\n");
@@ -547,7 +537,7 @@ bool QVideoEncoder::convertImage_sws(const QImage &img)
    srcstride[2]=0;
 
 
-   ffmpeg::sws_scale(img_convert_ctx, srcplanes, srcstride,0, getHeight(), ppicture->data, ppicture->linesize);
+   sws_scale(img_convert_ctx, srcplanes, srcstride,0, getHeight(), ppicture->data, ppicture->linesize);
 
    return true;
 }

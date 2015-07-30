@@ -20,48 +20,14 @@ THIS SOFTWARE IS PROVIDED BY COPYRIGHT HOLDERS ``AS IS'' AND ANY EXPRESS OR IMPL
 #ifndef _FFMPEG_H
 #define _FFMPEG_H
 
-#include <stdint.h>
-
-namespace ffmpeg {
 extern "C" {
-
-/*#define INT64_C
-
-#define __STDC_CONSTANT_MACROS
-*/
-
-#ifndef UINT64_C
-#define UINT64_C(value) __CONCAT(value, ULL)
-#endif
-
-
-#include "libavcodec/avcodec.h"
-#include "libavformat/avformat.h"
-#include "libavutil/mathematics.h"
-//#include "libavformat/riff.h"
-//#include "libavformat/metadata.h"
-//#include "libavformat/utils.h"
-#include "libavcodec/opt.h"
-#include "libavutil/rational.h"
-//#include "options.h"
-#include "libavutil/avstring.h"
-//#include "libavutil/internal.h"
-#include "libswscale/swscale.h"
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libavutil/mathematics.h>
+#include <libavcodec/opt.h>
+#include <libavutil/rational.h>
+#include <libavutil/avstring.h>
+#include <libswscale/swscale.h>
 }
-}
-
-/*
-#ifndef INT64_MIN
-#define INT64_MIN       (-0x7fffffffffffffffLL-1)
-#endif
-
-#ifndef INT64_MAX
-#define INT64_MAX 9223372036854775807LL
-#endif*/
-
-
-/*#ifndef INT64_C
-#define INT64_C(value) __CONCAT(value, LL)
-#endif*/
 
 #endif // _FFMPEG_H

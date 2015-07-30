@@ -4,9 +4,8 @@
 
 TEMPLATE = app
 TARGET   = tstoimg
-CONFIG  += console
+CONFIG  += console c++11
 HEADERS += rgbfile.h bcellfile.h bsv3file.h
 SOURCES += rgbfile.cpp bcellfile.cpp bsv3file.cpp tstoimg.cpp
-
 SOURCES += QVideoEncoder.cpp
 LIBS += -lavutil -lavcodec -lavformat -lswscale
