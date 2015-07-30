@@ -48,6 +48,17 @@ private:
         {}
     };
 
+    // thanks spAnser for info about this structure
+    struct ScrapDrawData {
+        float x;
+        float y;
+        float xscale;
+        float skew_h;
+        float skew_v;
+        float yscale;
+        uchar opacity;
+    };
+
     struct ScrapTransform {
         int mIndex;
         float mX;
@@ -56,12 +67,18 @@ private:
         float mRX;
         float mRY;
         float mFactor2;
+        float mOpacity;
         ScrapTransform()
         {}
-        ScrapTransform(int index, float data[6])
+        ScrapTransform(int index, ScrapDrawData * data, uchar opacity)
             : mIndex(index),
-              mX(data[0]),  mY(data[1]),  mFactor(data[2]),
-              mRX(data[3]), mRY(data[4]), mFactor2(data[5])
+              mX(data->x),
+              mY(data->y),
+              mFactor(data->xscale),
+              mRX(data->skew_h),
+              mRY(data->skew_v),
+              mFactor2(data->yscale),
+              mOpacity((float)opacity / 255.0)
         {}
     };
 

@@ -63,7 +63,8 @@ bool Bsv3File::loadFromIODevice(QIODevice & file) {
 
     uchar len=0;
     file.read((char*)&len, 1);
-    int transCnt = 24 + (len & 1);
+    bool hasOpacity = ((len & 1) == 1);
+    int transCnt = 24 + (hasOpacity ? 1 : 0);
 
     // set of image regions
 
@@ -119,19 +120,19 @@ bool Bsv3File::loadFromIODevice(QIODevice & file) {
             regId = 0;
             file.read((char*)&regId, 2);
             QByteArray data(file.read(transCnt));
-            float * fl = (float*)data.data();
+            Q_ASSERT(data.size() == transCnt);
+            ScrapDrawData * sdd = (ScrapDrawData *) data.data();
 #ifdef ENABLE_LOGS
             std::cout << " "
-                   << regId << " "
-//                 << data.toHex()
-                   << fl[0] << " "
-                   << fl[1] << " "
-                   << fl[2] << " "
-                   << fl[3] << " "
-                   << fl[4] << " "
-                   << fl[5] << std::endl;
+               << regId << " "
+               << sdd->x << " "
+               << sdd->y << " "
+               << sdd->xscale << " "
+               << sdd->skew_h << " "
+               << sdd->skew_v << " "
+               << sdd->yscale << std::endl;
 #endif
-            mTransformations[i].push_back(ScrapTransform(regId, fl));
+            mTransformations[i].push_back(ScrapTransform(regId, sdd, hasOpacity ? sdd->opacity : 0xff));
         }
     }
 
@@ -216,12 +217,11 @@ QVector< QImage > Bsv3File::getFrames(const QString & framesName) const {
                 const ScrapTransform & ts = mTransformations[index][i];
                 const QRect & scrapRect = mRects[ ts.mIndex ].mRect;
                 QImage scrap(createSubImage(mPict, scrapRect));
-                if (ts.mFactor == -1) {
-                    scrap = scrap.transformed(QTransform().scale(-1, 1));
-                }
-                int x = ts.mX + baseX;
-                int y = ts.mY + h;
-                painter.drawImage(x, y, scrap);
+                scrap = scrap.transformed(QTransform().scale(ts.mFactor, ts.mFactor2));
+                float x = ts.mX + baseX;
+                float y = ts.mY + h;
+                painter.setOpacity(ts.mOpacity);
+                painter.drawImage(x, y, scrap, 0, 0, ts.mRX, ts.mRY);
             }
             painter.end();
             frames.push_back(img);
