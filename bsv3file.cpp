@@ -22,6 +22,7 @@
 #include <QImage>
 #include <QPainter>
 #include <QTransform>
+#include <QDebug>
 
 #include <limits>
 #include <iostream>
@@ -48,6 +49,10 @@ bool Bsv3File::loadFromIODevice(QIODevice & file) {
     int sign = 0;
     file.read((char*)&sign, 2);
 
+    if (sign == 0x0104) {
+        std::cout << file.read(5).toHex().data() << "\n";
+    }
+
 #ifdef ENABLE_LOGS
     std::cout << "signature=" << sign << "\n";
 #endif
@@ -56,7 +61,7 @@ bool Bsv3File::loadFromIODevice(QIODevice & file) {
     file.read((char*)&regionsCount, 2);
 
 #ifdef ENABLE_LOGS
-    std::cout << "regionsCount=" << regionsCount << "\n";
+    std::cout << "regionsCount=0x" << std::hex << regionsCount << "\n";
 #endif
 
     // read flags
@@ -65,6 +70,10 @@ bool Bsv3File::loadFromIODevice(QIODevice & file) {
     file.read((char*)&len, 1);
     bool hasOpacity = ((len & 1) == 1);
     int transCnt = 24 + (hasOpacity ? 1 : 0);
+
+    if (sign == 0x0104) {
+        transCnt += 1;
+    }
 
     // set of image regions
 
@@ -90,6 +99,10 @@ bool Bsv3File::loadFromIODevice(QIODevice & file) {
 #endif
     }
 
+    if (sign == 0x0104) {
+        std::cout << file.read(2).toHex().data() << "\n";
+    }
+
     // set of transformations
 
     int count, sub;
@@ -101,6 +114,9 @@ bool Bsv3File::loadFromIODevice(QIODevice & file) {
 #endif
 
     for (int i = 0; i < count; ++i) {
+#ifdef ENABLE_LOGS
+        std::cout << "offset=0x" << std::hex << file.pos() << std::endl;
+#endif
         sub = 0;
         file.read((char*)&sub, 2);
         len = 0;
@@ -110,10 +126,6 @@ bool Bsv3File::loadFromIODevice(QIODevice & file) {
 #endif
 
         mTransformations.push_back(QVector<ScrapTransform>());
-
-#ifdef ENABLE_LOGS
-        std::cout << std::hex << "offset=" << file.pos() << std::endl;
-#endif
 
         int regId = 0;
         for (int j = 0; j < sub; ++j) {
@@ -185,8 +197,8 @@ QVector< QImage > Bsv3File::getFrames(const QString & framesName) const {
         float baseX, w, h;
         float minX = std::numeric_limits<float>::max();
         float minY = std::numeric_limits<float>::max();
-        float maxX = std::numeric_limits<float>::min();
-        float maxY = std::numeric_limits<float>::min();
+        float maxX = -400;
+        float maxY = -400;
         for (int index = ib; index <= ie; ++index) {
             for (int i = mTransformations[index].size()-1; i >= 0; --i) {
                 const ScrapTransform & ts = mTransformations[index][i];
@@ -196,15 +208,23 @@ QVector< QImage > Bsv3File::getFrames(const QString & framesName) const {
                 if (ts.mY < minY) minY = ts.mY;
 
                 float t = ts.mX + scrapRect.width();
-                if (t > maxX) maxX = t;
-                t = ts.mY /*+ mRects[regId].mRect.height()*/;
-                if (t > maxY) maxY = t;
+                if (t > maxX) {
+                    maxX = t;
+                }
+                if (ts.mY > maxY) {
+                    maxY = ts.mY;
+                }
             }
         }
 
-        baseX  = minX * -1;
+        baseX = minX * -1;
         w = abs(maxX) + abs(minX);
         h = abs(maxY) + abs(minY);
+
+        qDebug() << framesName
+                 << "baseX =" << baseX
+                 << "w =" << w
+                 << "h =" << h;
 
         // make frames
         for (int index = ib; index <= ie; ++index) {
@@ -215,13 +235,19 @@ QVector< QImage > Bsv3File::getFrames(const QString & framesName) const {
             QPainter painter(&img);
             for (int i = mTransformations[index].size()-1; i >= 0; --i) {
                 const ScrapTransform & ts = mTransformations[index][i];
-                const QRect & scrapRect = mRects[ ts.mIndex ].mRect;
+                const QRect & scrapRect = mRects[ts.mIndex].mRect;
                 QImage scrap(createSubImage(mPict, scrapRect));
-                scrap = scrap.transformed(QTransform().scale(ts.mFactor, ts.mFactor2));
+                QTransform transform;
+                transform.scale(ts.mFactor, ts.mFactor2);
+                transform.rotate(ts.mRX, Qt::XAxis);
+                transform.rotate(ts.mRY, Qt::YAxis);
+                scrap = scrap.transformed(transform);
                 float x = ts.mX + baseX;
                 float y = ts.mY + h;
+                Q_ASSERT( x >= 0 && y >= 0 );
+                qDebug() << "x =" << x << "y =" << y;
                 painter.setOpacity(ts.mOpacity);
-                painter.drawImage(x, y, scrap, 0, 0, ts.mRX, ts.mRY);
+                painter.drawImage(QPointF(x, y), scrap);
             }
             painter.end();
             frames.push_back(img);
