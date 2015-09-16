@@ -7,5 +7,9 @@ TARGET   = tstoimg
 CONFIG  += console c++11
 HEADERS += rgbfile.h bcellfile.h bsv3file.h
 SOURCES += rgbfile.cpp bcellfile.cpp bsv3file.cpp tstoimg.cpp
+
+# app is dependent on ffmpeg library. If FFMpeg is not installed in
+# your system, comment out the following 2 lines and uncomment the third
 SOURCES += QVideoEncoder.cpp
-LIBS += -lavutil -lavcodec -lavformat -lswscale
+LIBS    += -lavutil -lavcodec -lavformat -lswscale
+#DEFINES += DISABLE_AVI_OUTPUT=1

@@ -24,12 +24,15 @@
 #include "rgbfile.h"
 #include "bsv3file.h"
 #include "bcellfile.h"
-#include "QVideoEncoder.h"
 
 #include <QPainter>
 #include <math.h>
 
 typedef bool (*convertFunction)(const char * path);
+
+#if (DISABLE_AVI_OUTPUT != 1)
+
+#include "QVideoEncoder.h"
 
 bool dumpFramesIntoVideo(const QString & outFilePath, const QVector<QImage> & frames) {
     int width=0;
@@ -67,6 +70,8 @@ bool dumpFramesIntoVideo(const QString & outFilePath, const QVector<QImage> & fr
 
     return true;
 }
+
+#endif
 
 bool rgbToPng(const char * fp) {
     QString filePath(fp);
@@ -108,6 +113,11 @@ bool bsv3ToPng(const char * fp) {
 }
 
 bool bsv3ToAvi(const char * fp) {
+    bool ok = false;
+#if (DISABLE_AVI_OUTPUT == 1)
+    Q_UNUSED(fp);
+    qWarning() << "ERR: .avi generation is disabled";
+#else
     QString filePath(fp);
     filePath.remove(filePath.length() - 5, filePath.length());
     op::RGBFile rgb(filePath + ".rgb");
@@ -119,19 +129,26 @@ bool bsv3ToAvi(const char * fp) {
     filePath = QString(fp);
     QFile ffp(filePath);
     op::Bsv3File bsvFile(ffp, *img);
-    bool ok = true;
+    ok = true;
     foreach (const QString & name, bsvFile.animationNames()) {
         const QVector<QImage> & frames = bsvFile.getFrames(name);
         if (frames.count() <= 1) continue;
         ok &= dumpFramesIntoVideo(filePath + "." + name + ".avi", frames);
     }
+#endif
     return ok;
 }
 
 bool bcellToAvi(const char * fp) {
+#if (DISABLE_AVI_OUTPUT == 1)
+    Q_UNUSED(fp);
+    qWarning() << "ERR: .avi generation is disabled";
+    return false;
+#else
     QString filePath(fp);
     op::BcellFile bcell(filePath);
     return dumpFramesIntoVideo(filePath + ".avi", bcell.frames());
+#endif
 }
 
 int main(int argc, char ** argv) {
