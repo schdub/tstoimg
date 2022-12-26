@@ -1,6 +1,6 @@
 // ///////////////////////////////////////////////////////////////////////// //
 //                                                                           //
-//   Copyright (C) 2014, 2015 by Oleg Polivets                               //
+//   Copyright (C) 2014-2022 by Oleg Polivets                                //
 //   jsbot@ya.ru                                                             //
 //                                                                           //
 //   This program is free software; you can redistribute it and/or modify    //
@@ -30,15 +30,14 @@
 
 typedef bool (*convertFunction)(const char * path);
 
-#if (DISABLE_AVI_OUTPUT != 1)
+#if (DISABLE_VIDEO_OUTPUT != 1)
 
 #include "QVideoEncoder.h"
 
 bool dumpFramesIntoVideo(const QString & outFilePath, const QVector<QImage> & frames) {
     int width=0;
     int height=0;
-    int bitrate=1000000;
-    int gop = 20;
+    int bitrate = 2000;
     int fps = 25;
 
     foreach (const QImage & img, frames) {
@@ -50,24 +49,18 @@ bool dumpFramesIntoVideo(const QString & outFilePath, const QVector<QImage> & fr
     while (width % 8 != 0) ++width;
     while (height % 8 != 0) ++height;
 
-    QImage frame(width,height,QImage::Format_RGB32);
+    QVideoEncoder encoder(outFilePath.toStdString(), width, height, bitrate, fps);
+    QImage frame(width,height,QImage::Format_RGB888);
     QPainter painter(&frame);
-    QVideoEncoder encoder;
-    encoder.createFile(outFilePath,width,height,bitrate,gop,fps);
-
-    Q_ASSERT(encoder.isOk());
+//    Q_ASSERT(encoder.isOk());
     if (!encoder.isOk()) {
         return false;
     }
-
     foreach (const QImage & img, frames) {
-        frame.fill(QColor(102, 187, 102));
+        painter.fillRect(frame.rect(), QColor(102, 187, 102));
         painter.drawImage(0, 0, img);
-        encoder.encodeImage(frame);
+        encoder.pushFrame(frame.bits());
     }
-
-    encoder.close();
-
     return true;
 }
 
@@ -112,11 +105,10 @@ bool bsv3ToPng(const char * fp) {
     return bsvImage.save(filePath + ".png");
 }
 
-bool bsv3ToAvi(const char * fp) {
-    bool ok = false;
-#if (DISABLE_AVI_OUTPUT == 1)
+bool bsv3ToMp4(const char * fp) {
+#if (DISABLE_VIDEO_OUTPUT == 1)
     Q_UNUSED(fp);
-    qWarning() << "ERR: .avi generation is disabled";
+    qWarning() << "ERR: video generation is disabled";
 #else
     QString filePath(fp);
     filePath.remove(filePath.length() - 5, filePath.length());
@@ -129,40 +121,29 @@ bool bsv3ToAvi(const char * fp) {
     filePath = QString(fp);
     QFile ffp(filePath);
     op::Bsv3File bsvFile(ffp, *img);
-    ok = true;
+    bool ok = true;
     foreach (const QString & name, bsvFile.animationNames()) {
         const QVector<QImage> & frames = bsvFile.getFrames(name);
         if (frames.count() <= 1) continue;
-        ok &= dumpFramesIntoVideo(filePath + "." + name + ".avi", frames);
+        ok &= dumpFramesIntoVideo(filePath + "." + name + ".mp4", frames);
     }
 #endif
     return ok;
 }
 
-bool bcellToAvi(const char * fp) {
-#if (DISABLE_AVI_OUTPUT == 1)
+bool bcellToMp4(const char * fp) {
+#if (DISABLE_VIDEO_OUTPUT == 1)
     Q_UNUSED(fp);
-    qWarning() << "ERR: .avi generation is disabled";
+    qWarning() << "ERR: video generation is disabled";
     return false;
 #else
     QString filePath(fp);
     op::BcellFile bcell(filePath);
-    return dumpFramesIntoVideo(filePath + ".avi", bcell.frames());
+    return dumpFramesIntoVideo(filePath + ".mp4", bcell.frames());
 #endif
 }
 
 int main(int argc, char ** argv) {
-#if (0)
-    Q_UNUSED(argc);
-    Q_UNUSED(argv);
-
-//    dumpFramesIntoVideo("/home/jsbot/Desktop/1.avi", QVector<QImage>());
-
-//    bsv3ToPng("/home/jsbot/Desktop/bsv3/worldslargesttoilet.bsv3");
-    bsv3ToGif("/home/jsbot/Desktop/bsv3/worldslargesttoilet.bsv3");
-//    bcellToGif("/home/jsbot/Desktop/bsv3/mrburns_back_walk.bcell");
-    return EXIT_SUCCESS;
-#else
     int ret = EXIT_SUCCESS;
 
     if (argc < 2) {
@@ -170,24 +151,24 @@ int main(int argc, char ** argv) {
             << "USAGE: " << argv[0] << " --rgb2png file.rgb [fileN.rgb]\n"
             << "   or  " << argv[0] << " --png2rgb file.png [fileN.png]\n"
             << "   or  " << argv[0] << " --bsv2png file.bsv3 [fileN.bsv3]\n"
-            << "   or  " << argv[0] << " --bsv2avi file.bsv3 [fileN.bsv3]\n"
-            << "   or  " << argv[0] << " --bcell2avi file.bcell [fileN.bcell]\n";
+            << "   or  " << argv[0] << " --bsv2mp4 file.bsv3 [fileN.bsv3]\n"
+            << "   or  " << argv[0] << " --bcell2mp4 file.bcell [fileN.bcell]\n";
         ret = EXIT_FAILURE;
     } else {
         convertFunction functions[] = {
             rgbToPng,
             pngToRgb,
             bsv3ToPng,
-            bsv3ToAvi,
-            bcellToAvi
+            bsv3ToMp4,
+            bcellToMp4
         };
 
         const char* args[] = {
             "--rgb2png",
             "--png2rgb",
             "--bsv2png",
-            "--bsv2avi",
-            "--bcell2avi"
+            "--bsv2mp4",
+            "--bcell2mp4"
         };
 
         Q_ASSERT(sizeof(functions)/sizeof(*functions) == sizeof(args)/sizeof(*args));
@@ -213,5 +194,4 @@ int main(int argc, char ** argv) {
         }
     }
     return ret;
-#endif
 }
